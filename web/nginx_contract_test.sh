@@ -33,6 +33,11 @@ require_directive() {
         || fail "$1 is missing: $2"
 }
 
+grep -F 'http://rocketmq-server:8888' "$CONFIG" >/dev/null \
+    && fail "nginx config must not hard-code the backend URL"
+grep -F '${BACKEND_URL}' "$CONFIG" >/dev/null \
+    || fail "nginx config must use the BACKEND_URL environment variable"
+
 require_directive "location = /api-docs {" "proxy_pass \$backend_api_docs;"
 require_directive "location ^~ /api-docs/ {" "proxy_pass \$backend_api_docs_assets;"
 require_directive "location = /swagger-ui.html {" "proxy_pass \$backend_swagger_redirect;"

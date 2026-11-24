@@ -3,16 +3,22 @@
 # later 20-envsubst-on-templates.sh step.
 #
 # Prefer Docker's embedded DNS (127.0.0.11): it resolves container names and
-# is the correct choice on Docker Engine. Fall back to the default gateway
-# (podman's container DNS server) only when 127.0.0.11 is unreachable.
-# The host resolv.conf may leak public DNS servers that cannot resolve
-# container names and cause random 502s, so never use it directly.
+# is the correct choice on Docker Engine. In Kubernetes, use the nameserver from
+# /etc/resolv.conf (normally CoreDNS). For Podman, fall back to the default gateway.
 RESOLVER="127.0.0.11"
 if ! nc -z -w2 127.0.0.11 53 >/dev/null 2>&1; then
-    GW="$(ip route | awk '/default/ {print $3; exit}')"
-    if [ -n "$GW" ]; then
-        RESOLVER="$GW"
+    if [ -n "${KUBERNETES_SERVICE_HOST:-}" ] || [ -d /var/run/secrets/kubernetes.io/serviceaccount ]; then
+        RESOLVER="$(awk '$1 == "nameserver" { print $2; exit }' /etc/resolv.conf)"
+    else
+        GW="$(ip route | awk '/default/ {print $3; exit}')"
+        if [ -n "$GW" ]; then
+            RESOLVER="$GW"
+        fi
     fi
+fi
+if [ -z "$RESOLVER" ]; then
+    echo "15-resolver.envsh: unable to determine a DNS resolver" >&2
+    exit 1
 fi
 export RESOLVER
 echo "15-resolver.envsh: resolver=$RESOLVER"

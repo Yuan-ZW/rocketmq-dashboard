@@ -27,7 +27,8 @@ RUN npm run build
 
 # Stage 2: Serve
 FROM nginx:1.27.2-alpine
-ENV NGINX_ENVSUBST_FILTER=^RESOLVER$
+ENV NGINX_ENVSUBST_FILTER=^(RESOLVER|BACKEND_URL)$
+ENV BACKEND_URL=http://rocketmq-server:8888
 COPY --from=build /app/dist /usr/share/nginx/html
 # A separate path carries the same build-checked materials; COPY must fail when they are missing.
 COPY --from=build /app/dist/LICENSE /app/dist/NOTICE /usr/share/licenses/rocketmq-studio/
